@@ -1,0 +1,36 @@
+{
+  "name": "acn-node",
+  "version": "1.0.0",
+  "description": "ACN Node: Active Context Node Intelligence - Advanced AI platform for intelligent file management and graph visualization",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run backend\" \"npm run frontend\" \"npm run mcp-servers\"",
+    "backend": "cd backend && uvicorn main:app --reload --port 8000",
+    "frontend": "cd frontend && ng serve",
+    "mcp-servers": "concurrently \"npm run mcp:filesystem\" \"npm run mcp:process\"",
+    "mcp:filesystem": "cd mcp-servers/filesystem && node server.js",
+    "mcp:process": "cd mcp-servers/process && node server.js",
+    "build": "npm run build:frontend && npm run build:backend",
+    "build:frontend": "cd frontend && ng build --prod",
+    "build:backend": "cd backend && python -m build",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "test": "npm run test:frontend && npm run test:backend && npm run test:mcp",
+    "test:frontend": "cd frontend && ng test",
+    "test:backend": "cd backend && pytest",
+    "test:mcp": "cd mcp-servers && npm test"
+  },
+  "keywords": ["AI", "NDGi", "AFAVI", "MCP", "Graph Intelligence", "Learning"],
+  "author": "PathfinderAI Team",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.0",
+    "docker-compose": "^0.24.2"
+  },
+  "workspaces": [
+    "frontend",
+    "backend", 
+    "mcp-servers/*"
+  ]
+}
