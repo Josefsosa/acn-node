@@ -2,7 +2,7 @@
 
 **Active Context Node Intelligence**
 
-A revolutionary AI platform combining autonomous learning, intelligent file management, and real-time graph visualization with professional-grade architecture. Built with advanced memory optimization and neural graph intelligence technologies.
+A revolutionary AI platform combining autonomous learning, intelligent file management, and real-time graph visualization with professional-grade architecture. Built with advanced memory optimization and the new NDGi Natrual Dynamic Graph intelligence technologies.
 
 ## 🌟 **Features**
 
@@ -81,7 +81,7 @@ ACN Node System
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/acn-node.git
+git clone https://github.com/josefsosa/acn-node.git
 cd acn-node
 
 # Install dependencies
@@ -241,8 +241,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 📞 **Support**
 
 - **Documentation**: [docs/](./docs/)
-- **Issues**: [GitHub Issues](https://github.com/your-username/acn-node/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/your-username/acn-node/discussions)
+- **Issues**: [GitHub Issues](https://github.com/josefsosa/acn-node/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/josefsosa/acn-node/discussions)
 
 ---
 
