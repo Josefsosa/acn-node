@@ -1,0 +1,108 @@
+<!-- ACN Node Main Application -->
+<div class="acn-app">
+  <!-- Top Navigation -->
+  <p-menubar [model]="menuItems" class="acn-menubar">
+    <ng-template pTemplate="start">
+      <div class="acn-logo">
+        <i class="pi pi-share-alt"></i>
+        <span class="acn-title">ACN Node</span>
+        <span class="acn-subtitle">Active Context Node Intelligence</span>
+      </div>
+    </ng-template>
+    
+    <ng-template pTemplate="end">
+      <button 
+        pButton 
+        type="button" 
+        icon="pi pi-bars" 
+        class="p-button-text" 
+        (click)="toggleSidebar()"
+        pTooltip="Toggle Sidebar"
+        tooltipPosition="bottom">
+      </button>
+    </ng-template>
+  </p-menubar>
+
+  <!-- Main Layout -->
+  <div class="acn-layout">
+    <!-- Sidebar -->
+    <p-sidebar 
+      [(visible)]="sidebarVisible" 
+      position="left" 
+      [showCloseIcon]="true"
+      styleClass="acn-sidebar">
+      
+      <ng-template pTemplate="header">
+        <h3 class="acn-sidebar-title">
+          <i class="pi pi-cog"></i>
+          System Controls
+        </h3>
+      </ng-template>
+
+      <div class="acn-sidebar-content">
+        <!-- System Status -->
+        <p-panel header="System Status" [toggleable]="true">
+          <div class="acn-status-grid">
+            <div class="acn-status-item">
+              <label>MCP Servers</label>
+              <div class="acn-status-indicator acn-status-active">
+                <i class="pi pi-check-circle"></i>
+                <span>Active</span>
+              </div>
+            </div>
+            
+            <div class="acn-status-item">
+              <label>File Monitoring</label>
+              <div class="acn-status-indicator acn-status-active">
+                <i class="pi pi-eye"></i>
+                <span>Monitoring</span>
+              </div>
+            </div>
+            
+            <div class="acn-status-item">
+              <label>Graph Engine</label>
+              <div class="acn-status-indicator acn-status-active">
+                <i class="pi pi-share-alt"></i>
+                <span>Ready</span>
+              </div>
+            </div>
+          </div>
+        </p-panel>
+
+        <!-- Quick Actions -->
+        <p-panel header="Quick Actions" [toggleable]="true" class="mt-3">
+          <div class="acn-action-buttons">
+            <button 
+              pButton 
+              label="Auto-Organize Files" 
+              icon="pi pi-folder-open"
+              class="p-button-outlined w-full mb-2">
+            </button>
+            
+            <button 
+              pButton 
+              label="Refresh Graph" 
+              icon="pi pi-refresh"
+              class="p-button-outlined w-full mb-2">
+            </button>
+            
+            <button 
+              pButton 
+              label="Clear Cache" 
+              icon="pi pi-trash"
+              class="p-button-outlined w-full">
+            </button>
+          </div>
+        </p-panel>
+      </div>
+    </p-sidebar>
+
+    <!-- Main Content Area -->
+    <div class="acn-content" [class.acn-content-shifted]="sidebarVisible">
+      <router-outlet></router-outlet>
+    </div>
+  </div>
+
+  <!-- Toast Messages -->
+  <p-toast position="top-right"></p-toast>
+</div>
