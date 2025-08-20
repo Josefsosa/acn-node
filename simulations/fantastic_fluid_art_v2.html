@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Fluid Color Canvas with Controls</title>
+  <style>
+    html, body {
+      margin: 0;
+      overflow: hidden;
+      background: black;
+      font-family: sans-serif;
+    }
+    canvas {
+      display: block;
+    }
+    #menuToggle {
+      position: absolute;
+      top: 20px;
+      left: 10px;
+      z-index: 20;
+      background: rgba(255,255,255,0.1);
+      border: none;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      color: white;
+      font-size: 20px;
+      backdrop-filter: blur(10px);
+      cursor: pointer;
+    }
+    #menu {
+      position: absolute;
+      top: 70px;
+      left: 10px;
+      z-index: 10;
+      width: 240px;
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      color: white;
+      backdrop-filter: blur(12px);
+      display: none;
+    }
+    #menu label {
+      display: block;
+      margin: 10px 0 4px;
+      font-size: 14px;
+    }
+    #menu input[type="range"],
+    #menu input[type="color"] {
+      width: 100%;
+    }
+    #menu input[type="file"] {
+      width: 100%;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+<canvas id="fluidCanvas"></canvas>
+<!-- Glass Arrow Toggle -->
+<button id="menuToggle">☰</button>
+<!-- Menu Panel -->
+<div id="menu">
+  <label for="colorPicker">Color</label>
+  <input type="color" id="colorPicker" value="
+#ff00ff">
+  <label for="scattering">Scattering (Noise)</label>
+  <input type="range" id="scattering" min="0" max="10" step="0.1" value="5">
+  <label for="blending">Watercolor Blending</label>
+  <input type="range" id="blending" min="0.01" max="0.5" step="0.01" value="0.1">
+  <label for="imageUpload">Background Image</label>
+  <input type="file" id="imageUpload" accept="image/*">
+</div>
+<script>
+const canvas = document.getElementById('fluidCanvas');
+const ctx = canvas.getContext('2d');
+let w = canvas.width = window.innerWidth;
+let h = canvas.height = window.innerHeight;
+window.addEventListener('resize', () => {
+  w = canvas.width = window.innerWidth;
+  h = canvas.height = window.innerHeight;
+  if (bgImage) drawBackground();
+});
+let baseColor = '
+#ff00ff';
+let noiseAmount = 5;
+let blendAmount = 0.1;
+let bgImage = null;
+const dots = [];
+class Dot {
+  constructor(x, y, vx, vy, color) {
+    this.x = x; this.y = y;
+    this.vx = vx; this.vy = vy;
+    this.color = color;
+    this.life = 1.0;
+  }
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    this.vx *= 0.99;
+    this.vy *= 0.99;
+    this.life *= 0.97;
+  }
+  draw(ctx) {
+    ctx.beginPath();
+    ctx.fillStyle = this.color;
+    ctx.globalAlpha = this.life;
+    ctx.arc(this.x, this.y, 6, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+function spawn(x, y) {
+  for (let i = 0; i < 10; i++) {
+    const angle = Math.random() * 2 * Math.PI;
+    const speed = Math.random() * noiseAmount;
+    const vx = Math.cos(angle) * speed;
+    const vy = Math.sin(angle) * speed;
+    dots.push(new Dot(x, y, vx, vy, baseColor));
+  }
+}
+canvas.addEventListener('mousemove', (e) => {
+  spawn(e.clientX, e.clientY);
+});
+canvas.addEventListener('touchmove', (e) => {
+  for (let t of e.touches) {
+    spawn(t.clientX, t.clientY);
+  }
+}, { passive: true });
+function drawBackground() {
+  if (bgImage) {
+    ctx.globalAlpha = 1;
+    ctx.drawImage(bgImage, 0, 0, w, h);
+  } else {
+    ctx.fillStyle = 'rgba(0, 0, 0, ' + blendAmount + ')';
+    ctx.fillRect(0, 0, w, h);
+  }
+}
+function animate() {
+  drawBackground();
+  for (let i = dots.length - 1; i >= 0; i--) {
+    let d = dots[i];
+    d.update();
+    d.draw(ctx);
+    if (d.life < 0.01) dots.splice(i, 1);
+  }
+  requestAnimationFrame(animate);
+}
+animate();
+// UI Logic
+document.getElementById('menuToggle').onclick = () => {
+  const menu = document.getElementById('menu');
+  menu.style.display = (menu.style.display === 'block') ? 'none' : 'block';
+};
+document.getElementById('colorPicker').oninput = (e) => {
+  baseColor = e.target.value;
+};
+document.getElementById('scattering').oninput = (e) => {
+  noiseAmount = parseFloat(e.target.value);
+};
+document.getElementById('blending').oninput = (e) => {
+  blendAmount = parseFloat(e.target.value);
+};
+document.getElementById('imageUpload').onchange = (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    const img = new Image();
+    img.onload = () => {
+      bgImage = img;
+      drawBackground();
+    };
+    img.src = evt.target.result;
+  };
+  reader.readAsDataURL(file);
+};
+</script>
+</body>
+</html>

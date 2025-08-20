@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Fluid Color Canvas</title>
+  <style>
+    html, body {
+      margin: 0;
+      overflow: hidden;
+      background: black;
+    }
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+<canvas id="fluidCanvas"></canvas>
+<script>
+const canvas = document.getElementById('fluidCanvas');
+const ctx = canvas.getContext('2d');
+let w = canvas.width = window.innerWidth;
+let h = canvas.height = window.innerHeight;
+window.addEventListener('resize', () => {
+  w = canvas.width = window.innerWidth;
+  h = canvas.height = window.innerHeight;
+});
+const dots = [];
+class Dot {
+  constructor(x, y, vx, vy, color) {
+    this.x = x; this.y = y;
+    this.vx = vx; this.vy = vy;
+    this.color = color;
+    this.life = 1.0;
+  }
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    this.vx *= 0.99;
+    this.vy *= 0.99;
+    this.life *= 0.97;
+  }
+  draw(ctx) {
+    ctx.beginPath();
+    ctx.fillStyle = this.color;
+    ctx.globalAlpha = this.life;
+    ctx.arc(this.x, this.y, 6, 0, 2 * Math.PI);
+    ctx.fill();
+  }
+}
+function randomColor() {
+  const h = Math.floor(Math.random() * 360);
+  return hsl(${h}, 100%, 60%);
+}
+function spawn(x, y) {
+  for (let i = 0; i < 10; i++) {
+    const angle = Math.random() * 2 * Math.PI;
+    const speed = Math.random() * 5;
+    const vx = Math.cos(angle) * speed;
+    const vy = Math.sin(angle) * speed;
+    dots.push(new Dot(x, y, vx, vy, randomColor()));
+  }
+}
+canvas.addEventListener('mousemove', (e) => {
+  spawn(e.clientX, e.clientY);
+});
+canvas.addEventListener('touchmove', (e) => {
+  for (let t of e.touches) {
+    spawn(t.clientX, t.clientY);
+  }
+}, { passive: true });
+function animate() {
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+  ctx.fillRect(0, 0, w, h);
+  for (let i = dots.length - 1; i >= 0; i--) {
+    let d = dots[i];
+    d.update();
+    d.draw(ctx);
+    if (d.life < 0.01) dots.splice(i, 1);
+  }
+  requestAnimationFrame(animate);
+}
+animate();
+</script>
+</body>
+</html>

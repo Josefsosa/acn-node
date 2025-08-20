@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fantastic Fluid Art Experience</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+      font-family: 'Arial', sans-serif;
+      cursor: none;
+    }
+
+    canvas {
+      display: block;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+
+    .ui-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    .controls {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(20px);
+      border-radius: 20px;
+      padding: 20px;
+      color: white;
+      pointer-events: auto;
+      transform: translateX(-110%);
+      transition: transform 0.3s ease;
+      width: 300px;
+    }
+
+    .controls.open {
+      transform: translateX(0);
+    }
+
+    .toggle-btn {
+      position: absolute;
+      top: 30px;
+      left: 330px;
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      color: white;
+      font-size: 18px;
+      cursor: pointer;
+      backdrop-filter: blur(20px);
+      transition: all 0.3s ease;
+      pointer-events: auto;
+    }
+
+    .toggle-btn:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: scale(1.1);
+    }
+
+    .control-group {
+      margin-bottom: 20px;
+    }
+
+    .control-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+      color: #fff;
+    }
+
+    .control-group input[type="range"] {
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 3px;
+      outline: none;
+      -webkit-appearance: none;
+    }
+
+    .control-group input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      background: #fff;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    .preset-btn {
+      background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+      border: none;
+      border-radius: 10px;
+      padding: 10px 15px;
+      color: white;
+      cursor: pointer;
+      margin: 5px;
+      transition: transform 0.2s ease;
+      font-size: 12px;
+    }
+
+    .preset-btn:hover {
+      transform: scale(1.05);
+    }
+
+    .stats {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 10px 15px;
+      border-radius: 10px;
+      color: white;
+      font-size: 12px;
+      pointer-events: auto;
+    }
+
+    .cursor-trail {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      background: radial-gradient(circle, rgba(255,255,255,0.8) 0%, transparent 70%);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 50;
+    }
+
+    .fullscreen-btn {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      border-radius: 10px;
+      padding: 10px 15px;
+      color: white;
+      cursor: pointer;
+      backdrop-filter: blur(20px);
+      pointer-events: auto;
+    }
+
+    .audio-btn {
+      position: absolute;
+      top: 70px;
+      right: 20px;
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      border-radius: 10px;
+      padding: 10px 15px;
+      color: white;
+      cursor: pointer;
+      backdrop-filter: blur(20px);
+      pointer-events: auto;
+    }
+
+    .record-btn {
+      position: absolute;
+      top: 120px;
+      right: 20px;
+      background: rgba(255, 50, 50, 0.3);
+      border: none;
+      border-radius: 10px;
+      padding: 10px 15px;
+      color: white;
+      cursor: pointer;
+      backdrop-filter: blur(20px);
+      pointer-events: auto;
+    }
+
+    .record-btn.recording {
+      background: rgba(255, 50, 50, 0.8);
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.5; }
+      100% { opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="fluidCanvas"></canvas>
+
+<div class="ui-overlay">
+  <div class="controls" id="controls">
+    <div class="control-group">
+      <label>Flow Intensity</label>
+      <input type="range" id="intensity" min="0.1" max="5" step="0.1" value="1.5">
+    </div>
+    
+    <div class="control-group">
+      <label>Viscosity</label>
+      <input type="range" id="viscosity" min="0.1" max="2" step="0.05" value="0.8">
+    </div>
+    
+    <div class="control-group">
+      <label>Color Frequency</label>
+      <input type="range" id="colorFreq" min="0.1" max="3" step="0.1" value="1">
+    </div>
+    
+    <div class="control-group">
+      <label>Particle Count</label>
+      <input type="range" id="particleCount" min="100" max="2000" step="50" value="800">
+    </div>
+    
+    <div class="control-group">
+      <label>Turbulence</label>
+      <input type="range" id="turbulence" min="0" max="0.5" step="0.01" value="0.1">
+    </div>
+    
+    <div class="control-group">
+      <label>Glow Effect</label>
+      <input type="range" id="glow" min="0" max="10" step="0.5" value="3">
+    </div>
+
+    <div class="control-group">
+      <label>Presets</label>
+      <button class="preset-btn" onclick="applyPreset('cosmic')">🌌 Cosmic</button>
+      <button class="preset-btn" onclick="applyPreset('ocean')">🌊 Ocean</button>
+      <button class="preset-btn" onclick="applyPreset('fire')">🔥 Fire</button>
+      <button class="preset-btn" onclick="applyPreset('aurora')">✨ Aurora</button>
+      <button class="preset-btn" onclick="applyPreset('neon')">⚡ Neon</button>
+    </div>
+  </div>
+
+  <button class="toggle-btn" id="toggleBtn" onclick="toggleControls()">⚙️</button>
+  <button class="fullscreen-btn" onclick="toggleFullscreen()">⛶ Fullscreen</button>
+  <button class="audio-btn" id="audioBtn" onclick="toggleAudio()">🎵 Audio</button>
+  <button class="record-btn" id="recordBtn" onclick="toggleRecording()">● Record</button>
+
+  <div class="stats" id="stats">
+    FPS: <span id="fps">60</span> | 
+    Particles: <span id="particleCounter">0</span> |
+    Audio: <span id="audioStatus">Off</span>
+  </div>
+</div>
+
+<script>
+// Core variables
+const canvas = document.getElementById('fluidCanvas');
+const ctx = canvas.getContext('2d', { alpha: false });
+let width = canvas.width = window.innerWidth;
+let height = canvas.height = window.innerHeight;
+
+// Performance tracking
+let lastTime = 0;
+let fps = 0;
+let frameCount = 0;
+
+// Particle system
+const particles = [];
+const maxParticles = 2000;
+
+// Audio system
+let audioContext = null;
+let analyser = null;
+let dataArray = null;
+let audioActive = false;
+
+// Recording
+let mediaRecorder = null;
+let isRecording = false;
+
+// Settings
+let settings = {
+  intensity: 1.5,
+  viscosity: 0.8,
+  colorFreq: 1,
+  particleCount: 800,
+  turbulence: 0.1,
+  glow: 3
+};
+
+// Color palettes
+const palettes = {
+  cosmic: ['#1a0033', '#330066', '#6600cc', '#9933ff', '#cc66ff'],
+  ocean: ['#001133', '#003366', '#0066cc', '#3399ff', '#66ccff'],
+  fire: ['#330000', '#660000', '#cc3300', '#ff6600', '#ffcc00'],
+  aurora: ['#003300', '#006633', '#00cc66', '#33ff99', '#66ffcc'],
+  neon: ['#ff0080', '#ff0040', '#ff4000', '#ff8000', '#ffff00']
+};
+
+let currentPalette = palettes.cosmic;
+let time = 0;
+
+// Cursor tracking
+let mouseX = width / 2;
+let mouseY = height / 2;
+let mouseTrail = [];
+
+// Particle class
+class Particle {
+  constructor(x, y) {
+    this.x = x || Math.random() * width;
+    this.y = y || Math.random() * height;
+    this.vx = (Math.random() - 0.5) * 2;
+    this.vy = (Math.random() - 0.5) * 2;
+    this.life = 1;
+    this.maxLife = Math.random() * 100 + 50;
+    this.age = 0;
+    this.size = Math.random() * 3 + 1;
+    this.color = currentPalette[Math.floor(Math.random() * currentPalette.length)];
+    this.originalColor = this.color;
+  }
+
+  update() {
+    // Physics
+    const dx = mouseX - this.x;
+    const dy = mouseY - this.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    
+    if (distance < 100) {
+      const force = (100 - distance) / 100 * settings.intensity;
+      this.vx += (dx / distance) * force * 0.1;
+      this.vy += (dy / distance) * force * 0.1;
+    }
+
+    // Turbulence
+    this.vx += (Math.random() - 0.5) * settings.turbulence;
+    this.vy += (Math.random() - 0.5) * settings.turbulence;
+
+    // Viscosity
+    this.vx *= settings.viscosity;
+    this.vy *= settings.viscosity;
+
+    // Update position
+    this.x += this.vx;
+    this.y += this.vy;
+
+    // Wrap around edges
+    if (this.x < 0) this.x = width;
+    if (this.x > width) this.x = 0;
+    if (this.y < 0) this.y = height;
+    if (this.y > height) this.y = 0;
+
+    // Age and life
+    this.age++;
+    this.life = 1 - (this.age / this.maxLife);
+
+    // Color evolution
+    const colorIndex = Math.floor((this.age / 20 + time * settings.colorFreq) % currentPalette.length);
+    this.color = currentPalette[colorIndex];
+
+    // Audio reactive size
+    if (audioActive && analyser) {
+      const freqData = dataArray[Math.floor(this.x / width * dataArray.length)];
+      this.size = (freqData / 255) * 5 + 1;
+    }
+
+    return this.life > 0;
+  }
+
+  draw(ctx) {
+    const alpha = this.life;
+    
+    // Glow effect
+    if (settings.glow > 0) {
+      const gradient = ctx.createRadialGradient(
+        this.x, this.y, 0,
+        this.x, this.y, this.size * settings.glow
+      );
+      gradient.addColorStop(0, this.color + Math.floor(alpha * 255).toString(16).padStart(2, '0'));
+      gradient.addColorStop(1, 'transparent');
+      
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size * settings.glow, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Core particle
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+
+// Particle management
+function spawnParticles(x, y, count = 5) {
+  for (let i = 0; i < count && particles.length < maxParticles; i++) {
+    particles.push(new Particle(x + (Math.random() - 0.5) * 20, y + (Math.random() - 0.5) * 20));
+  }
+}
+
+function updateParticles() {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    if (!particles[i].update()) {
+      particles.splice(i, 1);
+    }
+  }
+
+  // Maintain particle count
+  while (particles.length < settings.particleCount) {
+    particles.push(new Particle());
+  }
+
+  // Remove excess particles
+  while (particles.length > settings.particleCount) {
+    particles.pop();
+  }
+}
+
+function drawParticles() {
+  particles.forEach(particle => particle.draw(ctx));
+}
+
+// Background effects
+function drawBackground() {
+  // Dynamic gradient background
+  const gradient = ctx.createLinearGradient(0, 0, width, height);
+  const t = time * 0.001;
+  
+  gradient.addColorStop(0, `hsla(${(t * 50) % 360}, 20%, 5%, 0.1)`);
+  gradient.addColorStop(0.5, `hsla(${(t * 30 + 120) % 360}, 30%, 8%, 0.1)`);
+  gradient.addColorStop(1, `hsla(${(t * 40 + 240) % 360}, 25%, 6%, 0.1)`);
+  
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, width, height);
+}
+
+// Mouse trail
+function updateMouseTrail() {
+  mouseTrail.push({ x: mouseX, y: mouseY, time: Date.now() });
+  
+  // Remove old trail points
+  const now = Date.now();
+  mouseTrail = mouseTrail.filter(point => now - point.time < 500);
+}
+
+function drawMouseTrail() {
+  if (mouseTrail.length < 2) return;
+  
+  ctx.globalCompositeOperation = 'lighter';
+  
+  for (let i = 0; i < mouseTrail.length - 1; i++) {
+    const point = mouseTrail[i];
+    const alpha = 1 - ((Date.now() - point.time) / 500);
+    
+    ctx.globalAlpha = alpha * 0.5;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(point.x, point.y);
+    ctx.lineTo(mouseTrail[i + 1].x, mouseTrail[i + 1].y);
+    ctx.stroke();
+  }
+  
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
+}
+
+// Audio setup
+async function initAudio() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const source = audioContext.createMediaStreamSource(stream);
+    
+    analyser = audioContext.createAnalyser();
+    analyser.fftSize = 256;
+    source.connect(analyser);
+    
+    dataArray = new Uint8Array(analyser.frequencyBinCount);
+    audioActive = true;
+    
+    document.getElementById('audioStatus').textContent = 'On';
+  } catch (err) {
+    console.log('Audio not available:', err);
+    audioActive = false;
+    document.getElementById('audioStatus').textContent = 'Error';
+  }
+}
+
+// Main animation loop
+function animate(currentTime) {
+  requestAnimationFrame(animate);
+  
+  // Calculate FPS
+  if (currentTime - lastTime >= 1000) {
+    fps = frameCount;
+    frameCount = 0;
+    lastTime = currentTime;
+    document.getElementById('fps').textContent = fps;
+  }
+  frameCount++;
+  
+  time = currentTime;
+  
+  // Get audio data
+  if (audioActive && analyser) {
+    analyser.getByteFrequencyData(dataArray);
+  }
+  
+  // Update mouse trail
+  updateMouseTrail();
+  
+  // Draw everything
+  drawBackground();
+  updateParticles();
+  drawParticles();
+  drawMouseTrail();
+  
+  // Update stats
+  document.getElementById('particleCounter').textContent = particles.length;
+}
+
+// Event handlers
+canvas.addEventListener('mousemove', (e) => {
+  mouseX = e.clientX;
+  mouseY = e.clientY;
+  spawnParticles(mouseX, mouseY, 3);
+});
+
+canvas.addEventListener('click', (e) => {
+  spawnParticles(e.clientX, e.clientY, 20);
+});
+
+canvas.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  const touch = e.touches[0];
+  mouseX = touch.clientX;
+  mouseY = touch.clientY;
+  spawnParticles(mouseX, mouseY, 5);
+}, { passive: false });
+
+window.addEventListener('resize', () => {
+  width = canvas.width = window.innerWidth;
+  height = canvas.height = window.innerHeight;
+});
+
+// Control handlers
+document.getElementById('intensity').addEventListener('input', (e) => {
+  settings.intensity = parseFloat(e.target.value);
+});
+
+document.getElementById('viscosity').addEventListener('input', (e) => {
+  settings.viscosity = parseFloat(e.target.value);
+});
+
+document.getElementById('colorFreq').addEventListener('input', (e) => {
+  settings.colorFreq = parseFloat(e.target.value);
+});
+
+document.getElementById('particleCount').addEventListener('input', (e) => {
+  settings.particleCount = parseInt(e.target.value);
+});
+
+document.getElementById('turbulence').addEventListener('input', (e) => {
+  settings.turbulence = parseFloat(e.target.value);
+});
+
+document.getElementById('glow').addEventListener('input', (e) => {
+  settings.glow = parseFloat(e.target.value);
+});
+
+// UI functions
+function toggleControls() {
+  const controls = document.getElementById('controls');
+  controls.classList.toggle('open');
+}
+
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen();
+  } else {
+    document.exitFullscreen();
+  }
+}
+
+async function toggleAudio() {
+  if (!audioActive) {
+    await initAudio();
+  } else {
+    audioActive = false;
+    if (audioContext) {
+      audioContext.close();
+      audioContext = null;
+    }
+    document.getElementById('audioStatus').textContent = 'Off';
+  }
+}
+
+function toggleRecording() {
+  const btn = document.getElementById('recordBtn');
+  
+  if (!isRecording) {
+    const stream = canvas.captureStream(30);
+    mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+    const chunks = [];
+    
+    mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(chunks, { type: 'video/webm' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'fluid-art-' + Date.now() + '.webm';
+      a.click();
+      URL.revokeObjectURL(url);
+    };
+    
+    mediaRecorder.start();
+    isRecording = true;
+    btn.classList.add('recording');
+    btn.textContent = '⏹ Stop';
+  } else {
+    mediaRecorder.stop();
+    isRecording = false;
+    btn.classList.remove('recording');
+    btn.textContent = '● Record';
+  }
+}
+
+function applyPreset(presetName) {
+  currentPalette = palettes[presetName];
+  
+  switch(presetName) {
+    case 'cosmic':
+      settings.intensity = 2;
+      settings.viscosity = 0.9;
+      settings.turbulence = 0.05;
+      settings.glow = 5;
+      break;
+    case 'ocean':
+      settings.intensity = 1;
+      settings.viscosity = 0.95;
+      settings.turbulence = 0.02;
+      settings.glow = 2;
+      break;
+    case 'fire':
+      settings.intensity = 3;
+      settings.viscosity = 0.7;
+      settings.turbulence = 0.3;
+      settings.glow = 4;
+      break;
+    case 'aurora':
+      settings.intensity = 1.5;
+      settings.viscosity = 0.85;
+      settings.turbulence = 0.1;
+      settings.glow = 6;
+      break;
+    case 'neon':
+      settings.intensity = 2.5;
+      settings.viscosity = 0.8;
+      settings.turbulence = 0.2;
+      settings.glow = 8;
+      break;
+  }
+  
+  // Update UI controls
+  document.getElementById('intensity').value = settings.intensity;
+  document.getElementById('viscosity').value = settings.viscosity;
+  document.getElementById('turbulence').value = settings.turbulence;
+  document.getElementById('glow').value = settings.glow;
+}
+
+// Initialize
+spawnParticles(width/2, height/2, 100);
+animate(0);
+
+// Auto-spawn particles
+setInterval(() => {
+  if (particles.length < settings.particleCount / 2) {
+    spawnParticles(Math.random() * width, Math.random() * height, 10);
+  }
+}, 1000);
+
+</script>
+
+</body>
+</html>

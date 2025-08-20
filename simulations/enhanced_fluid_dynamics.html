@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Advanced Fluid Dynamics Canvas</title>
+  <style>
+    html, body {
+      margin: 0;
+      overflow: hidden;
+      background: black;
+      font-family: sans-serif;
+    }
+    canvas {
+      display: block;
+    }
+    .controls {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 10px;
+      padding: 15px;
+      color: white;
+      font-size: 12px;
+    }
+    .controls input[type="range"] {
+      width: 100px;
+      margin: 5px 0;
+    }
+  </style>
+</head>
+<body>
+<canvas id="fluidCanvas"></canvas>
+
+<div class="controls">
+  <div>Viscosity: <input type="range" id="viscosity" min="0.001" max="0.02" step="0.001" value="0.008"></div>
+  <div>Pressure: <input type="range" id="pressure" min="0.1" max="2" step="0.1" value="1"></div>
+  <div>Turbulence: <input type="range" id="turbulence" min="0" max="0.1" step="0.01" value="0.03"></div>
+  <div>Density: <input type="range" id="density" min="1" max="20" step="1" value="8"></div>
+</div>
+
+<script>
+const canvas = document.getElementById('fluidCanvas');
+const ctx = canvas.getContext('2d');
+let w = canvas.width = window.innerWidth;
+let h = canvas.height = window.innerHeight;
+
+window.addEventListener('resize', () => {
+  w = canvas.width = window.innerWidth;
+  h = canvas.height = window.innerHeight;
+});
+
+// Fluid simulation parameters
+let viscosity = 0.008;
+let pressure = 1.0;
+let turbulence = 0.03;
+let density = 8;
+
+// Grid for velocity field
+const gridSize = 32;
+const gridW = Math.ceil(w / gridSize);
+const gridH = Math.ceil(h / gridSize);
+let velocityField = [];
+let pressureField = [];
+
+// Initialize grid
+function initGrid() {
+  velocityField = [];
+  pressureField = [];
+  for (let i = 0; i < gridW; i++) {
+    velocityField[i] = [];
+    pressureField[i] = [];
+    for (let j = 0; j < gridH; j++) {
+      velocityField[i][j] = { x: 0, y: 0 };
+      pressureField[i][j] = 0;
+    }
+  }
+}
+
+initGrid();
+
+const dots = [];
+
+class FluidParticle {
+  constructor(x, y, vx, vy, color) {
+    this.x = x;
+    this.y = y;
+    this.vx = vx;
+    this.vy = vy;
+    this.color = color;
+    this.life = 1.0;
+    this.size = Math.random() * 4 + 2;
+    this.mass = this.size * 0.1;
+    this.pressure = 0;
+    this.density = 1;
+    this.age = 0;
+  }
+
+  update() {
+    this.age++;
+    
+    // Get grid position
+    const gx = Math.floor(this.x / gridSize);
+    const gy = Math.floor(this.y / gridSize);
+    
+    // Apply velocity field influence
+    if (gx >= 0 && gx < gridW && gy >= 0 && gy < gridH) {
+      const fieldVel = velocityField[gx][gy];
+      this.vx += fieldVel.x * 0.1;
+      this.vy += fieldVel.y * 0.1;
+    }
+    
+    // Particle interactions (density and pressure)
+    this.density = 1;
+    this.pressure = 0;
+    
+    for (let other of dots) {
+      if (other === this) continue;
+      
+      const dx = other.x - this.x;
+      const dy = other.y - this.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const influence = 30; // Interaction radius
+      
+      if (dist < influence && dist > 0) {
+        // Density calculation
+        const densityContrib = Math.max(0, 1 - dist / influence);
+        this.density += densityContrib;
+        
+        // Pressure forces
+        const pressureForce = (this.density - 1) * pressure * 0.01;
+        const forceX = (dx / dist) * pressureForce;
+        const forceY = (dy / dist) * pressureForce;
+        
+        this.vx -= forceX;
+        this.vy -= forceY;
+        
+        // Viscosity (velocity smoothing)
+        const velDiffX = other.vx - this.vx;
+        const velDiffY = other.vy - this.vy;
+        this.vx += velDiffX * viscosity * densityContrib;
+        this.vy += velDiffY * viscosity * densityContrib;
+      }
+    }
+    
+    // Turbulence using curl noise
+    const curlX = this.getCurlNoise(this.x + 0.1, this.y);
+    const curlY = this.getCurlNoise(this.x, this.y + 0.1);
+    this.vx += curlX * turbulence;
+    this.vy += curlY * turbulence;
+    
+    // Apply velocity damping
+    this.vx *= 0.995;
+    this.vy *= 0.995;
+    
+    // Update position
+    this.x += this.vx;
+    this.y += this.vy;
+    
+    // Boundary conditions with bounce
+    if (this.x < 0) {
+      this.x = 0;
+      this.vx = Math.abs(this.vx) * 0.8;
+    }
+    if (this.x > w) {
+      this.x = w;
+      this.vx = -Math.abs(this.vx) * 0.8;
+    }
+    if (this.y < 0) {
+      this.y = 0;
+      this.vy = Math.abs(this.vy) * 0.8;
+    }
+    if (this.y > h) {
+      this.y = h;
+      this.vy = -Math.abs(this.vy) * 0.8;
+    }
+    
+    // Life decay
+    this.life *= 0.996;
+    
+    // Size based on density
+    this.size = Math.max(1, this.mass * 10 + this.density * 2);
+  }
+  
+  // Curl noise for turbulence
+  getCurlNoise(x, y) {
+    const scale = 0.01;
+    const time = Date.now() * 0.001;
+    return Math.sin(x * scale + time) * Math.cos(y * scale + time * 0.7);
+  }
+
+  draw(ctx) {
+    ctx.beginPath();
+    
+    // Color based on velocity and density
+    const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+    const hue = (speed * 10 + this.density * 20) % 360;
+    const saturation = Math.min(100, 50 + this.density * 25);
+    const lightness = Math.min(80, 40 + speed * 20);
+    
+    ctx.fillStyle = `hsla(${hue}, ${saturation}%, ${lightness}%, ${this.life})`;
+    
+    // Glow effect based on density
+    if (this.density > 2) {
+      ctx.shadowColor = ctx.fillStyle;
+      ctx.shadowBlur = this.density * 3;
+    } else {
+      ctx.shadowBlur = 0;
+    }
+    
+    ctx.globalAlpha = this.life;
+    ctx.arc(this.x, this.y, this.size, 0, 2 * Math.PI);
+    ctx.fill();
+    
+    // Draw velocity lines for high-speed particles
+    if (speed > 2) {
+      ctx.strokeStyle = ctx.fillStyle;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(this.x, this.y);
+      ctx.lineTo(this.x - this.vx * 3, this.y - this.vy * 3);
+      ctx.stroke();
+    }
+    
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
+  }
+}
+
+// Update velocity field based on particle movements
+function updateVelocityField() {
+  // Clear field
+  for (let i = 0; i < gridW; i++) {
+    for (let j = 0; j < gridH; j++) {
+      velocityField[i][j] = { x: 0, y: 0 };
+      pressureField[i][j] = 0;
+    }
+  }
+  
+  // Add particle influences to grid
+  for (let particle of dots) {
+    const gx = Math.floor(particle.x / gridSize);
+    const gy = Math.floor(particle.y / gridSize);
+    
+    if (gx >= 0 && gx < gridW && gy >= 0 && gy < gridH) {
+      velocityField[gx][gy].x += particle.vx * 0.1;
+      velocityField[gx][gy].y += particle.vy * 0.1;
+      pressureField[gx][gy] += particle.density;
+    }
+  }
+  
+  // Diffuse velocity field
+  for (let i = 1; i < gridW - 1; i++) {
+    for (let j = 1; j < gridH - 1; j++) {
+      const avgVx = (velocityField[i-1][j].x + velocityField[i+1][j].x + 
+                     velocityField[i][j-1].x + velocityField[i][j+1].x) * 0.25;
+      const avgVy = (velocityField[i-1][j].y + velocityField[i+1][j].y + 
+                     velocityField[i][j-1].y + velocityField[i][j+1].y) * 0.25;
+      
+      velocityField[i][j].x = velocityField[i][j].x * 0.9 + avgVx * 0.1;
+      velocityField[i][j].y = velocityField[i][j].y * 0.9 + avgVy * 0.1;
+    }
+  }
+}
+
+function randomColor() {
+  const h = Math.floor(Math.random() * 360);
+  return `hsl(${h}, 100%, 60%)`;
+}
+
+function spawn(x, y, count = 8) {
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * 2 * Math.PI;
+    const speed = Math.random() * 6 + 2;
+    const vx = Math.cos(angle) * speed;
+    const vy = Math.sin(angle) * speed;
+    
+    // Add some random offset to spawn position
+    const offsetX = (Math.random() - 0.5) * 20;
+    const offsetY = (Math.random() - 0.5) * 20;
+    
+    dots.push(new FluidParticle(x + offsetX, y + offsetY, vx, vy, randomColor()));
+  }
+}
+
+// Mouse interaction with fluid forces
+let mouseX = 0, mouseY = 0;
+let prevMouseX = 0, prevMouseY = 0;
+
+canvas.addEventListener('mousemove', (e) => {
+  prevMouseX = mouseX;
+  prevMouseY = mouseY;
+  mouseX = e.clientX;
+  mouseY = e.clientY;
+  
+  // Calculate mouse velocity
+  const mouseVx = mouseX - prevMouseX;
+  const mouseVy = mouseY - prevMouseY;
+  
+  // Apply force to nearby particles
+  for (let particle of dots) {
+    const dx = particle.x - mouseX;
+    const dy = particle.y - mouseY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    
+    if (dist < 100 && dist > 0) {
+      const force = (100 - dist) / 100;
+      particle.vx += mouseVx * force * 0.1;
+      particle.vy += mouseVy * force * 0.1;
+    }
+  }
+  
+  spawn(mouseX, mouseY, Math.floor(density));
+});
+
+canvas.addEventListener('touchmove', (e) => {
+  for (let t of e.touches) {
+    spawn(t.clientX, t.clientY, Math.floor(density));
+  }
+}, { passive: true });
+
+function animate() {
+  // Semi-transparent background for trails
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+  ctx.fillRect(0, 0, w, h);
+  
+  // Update velocity field
+  updateVelocityField();
+  
+  // Update and draw particles
+  for (let i = dots.length - 1; i >= 0; i--) {
+    let d = dots[i];
+    d.update();
+    d.draw(ctx);
+    
+    // Remove dead particles
+    if (d.life < 0.01) {
+      dots.splice(i, 1);
+    }
+  }
+  
+  // Maintain minimum particle count for ambient flow
+  if (dots.length < 50) {
+    for (let i = 0; i < 5; i++) {
+      spawn(Math.random() * w, Math.random() * h, 1);
+    }
+  }
+  
+  requestAnimationFrame(animate);
+}
+
+// Control handlers
+document.getElementById('viscosity').addEventListener('input', (e) => {
+  viscosity = parseFloat(e.target.value);
+});
+
+document.getElementById('pressure').addEventListener('input', (e) => {
+  pressure = parseFloat(e.target.value);
+});
+
+document.getElementById('turbulence').addEventListener('input', (e) => {
+  turbulence = parseFloat(e.target.value);
+});
+
+document.getElementById('density').addEventListener('input', (e) => {
+  density = parseInt(e.target.value);
+});
+
+// Start with some ambient particles
+for (let i = 0; i < 100; i++) {
+  spawn(Math.random() * w, Math.random() * h, 1);
+}
+
+animate();
+</script>
+</body>
+</html>

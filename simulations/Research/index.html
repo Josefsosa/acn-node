@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E8 248-Dimensional Visualization</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            background: radial-gradient(circle at center, #0a0a0a 0%, #000000 100%);
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            color: white;
+        }
+        
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #333;
+            max-width: 350px;
+            backdrop-filter: blur(10px);
+        }
+        
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #333;
+            backdrop-filter: blur(10px);
+        }
+        
+        h2 {
+            margin: 0 0 10px 0;
+            color: #00ff88;
+            font-size: 18px;
+        }
+        
+        p {
+            margin: 5px 0;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        
+        .slider {
+            width: 100%;
+            margin: 10px 0;
+        }
+        
+        .dimension-counter {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #00ff88;
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+        
+        .dim-number {
+            font-size: 36px;
+            font-weight: bold;
+            color: #00ff88;
+            margin: 0;
+        }
+        
+        .dim-label {
+            font-size: 12px;
+            color: #888;
+            margin: 5px 0 0 0;
+        }
+        
+        .root-info {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #333;
+            backdrop-filter: blur(10px);
+            max-width: 300px;
+            font-size: 11px;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #00ff88;
+            font-size: 24px;
+            z-index: 200;
+        }
+
+        .error {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff4444;
+            font-size: 18px;
+            text-align: center;
+            z-index: 200;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #ff4444;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="loading" class="loading">Loading E8 Visualization...</div>
+        
+        <div id="info" style="display: none;">
+            <h2>E8 Lie Group Visualization</h2>
+            <p><strong>Dimension:</strong> 248</p>
+            <p><strong>Root System:</strong> 240 roots + 8 Cartan generators</p>
+            <p><strong>Vertices:</strong> Each point represents a root vector</p>
+            <p><strong>Colors:</strong> Encode symmetry relationships</p>
+            <p><strong>Animation:</strong> Shows group action evolution</p>
+        </div>
+        
+        <div class="dimension-counter" style="display: none;">
+            <div class="dim-number" id="dimCounter">248</div>
+            <div class="dim-label">DIMENSIONS</div>
+        </div>
+        
+        <div id="controls" style="display: none;">
+            <h2>Controls</h2>
+            <label>Rotation Speed: <input type="range" class="slider" id="speedSlider" min="0" max="2" step="0.1" value="0.5"></label>
+            <label>Complexity: <input type="range" class="slider" id="complexitySlider" min="1" max="8" step="1" value="4"></label>
+            <label>Projection: <input type="range" class="slider" id="projectionSlider" min="0" max="10" step="0.1" value="5"></label>
+        </div>
+        
+        <div class="root-info" style="display: none;">
+            <h2>Root System Structure</h2>
+            <p><strong>Simple Roots:</strong> 8 fundamental vectors</p>
+            <p><strong>Positive Roots:</strong> 120 vectors</p>
+            <p><strong>Negative Roots:</strong> 120 vectors</p>
+            <p><strong>Cartan Subalgebra:</strong> 8 diagonal generators</p>
+            <p><strong>Total:</strong> 248 basis elements</p>
+        </div>
+    </div>
+
+    <script>
+        // Error handling
+        window.addEventListener('error', (e) => {
+            console.error('Error:', e.error);
+            showError('Failed to load visualization: ' + e.error.message);
+        });
+
+        function showError(message) {
+            const loading = document.getElementById('loading');
+            if (loading) loading.style.display = 'none';
+            
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error';
+            errorDiv.innerHTML = `
+                <h3>Visualization Error</h3>
+                <p>${message}</p>
+                <p>Please check the browser console for more details.</p>
+            `;
+            document.getElementById('container').appendChild(errorDiv);
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('info').style.display = 'block';
+            document.querySelector('.dimension-counter').style.display = 'block';
+            document.getElementById('controls').style.display = 'block';
+            document.querySelector('.root-info').style.display = 'block';
+        }
+
+        // Check if Three.js loaded
+        if (typeof THREE === 'undefined') {
+            showError('Three.js failed to load. Please check your internet connection.');
+        } else {
+            try {
+                // Scene setup
+                const scene = new THREE.Scene();
+                const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+                
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.setClearColor(0x000000, 0);
+                document.getElementById('container').appendChild(renderer.domElement);
+
+                // E8 root system approximation
+                function generateE8Structure() {
+                    const points = [];
+                    const numLayers = 8; // 8 layers for 8 simple roots
+                    const pointsPerLayer = 31; // Approximately 248/8
+                    
+                    // Generate points in concentric structures
+                    for (let layer = 0; layer < numLayers; layer++) {
+                        const radius = 5 + layer * 2;
+                        const heightOffset = (layer - numLayers/2) * 3;
+                        
+                        for (let i = 0; i < pointsPerLayer; i++) {
+                            const angle1 = (i / pointsPerLayer) * Math.PI * 2;
+                            const angle2 = (layer / numLayers) * Math.PI;
+                            
+                            // Use golden ratio and Fibonacci-like spacing
+                            const phi = (1 + Math.sqrt(5)) / 2;
+                            const spiralAngle = i * phi * 2 * Math.PI;
+                            
+                            const x = radius * Math.cos(angle1) * Math.sin(angle2) + Math.cos(spiralAngle) * 0.5;
+                            const y = radius * Math.sin(angle1) * Math.sin(angle2) + Math.sin(spiralAngle) * 0.5;
+                            const z = radius * Math.cos(angle2) + heightOffset;
+                            
+                            // Add some 8-dimensional projection effects
+                            const w4 = Math.sin(angle1 * 3 + layer) * 0.3;
+                            const w5 = Math.cos(angle2 * 2 + layer) * 0.3;
+                            
+                            // Determine root type based on position
+                            let rootType;
+                            if (i < 8) {
+                                rootType = 'simple';
+                            } else if (i < 16) {
+                                rootType = 'positive';
+                            } else {
+                                rootType = 'negative';
+                            }
+                            
+                            points.push({
+                                position: new THREE.Vector3(x, y, z),
+                                layer: layer,
+                                index: i,
+                                extra: { w4, w5 },
+                                rootType: rootType
+                            });
+                        }
+                    }
+                    
+                    return points;
+                }
+
+                const e8Points = generateE8Structure();
+                
+                // Create visual representation
+                const pointGeometry = new THREE.SphereGeometry(0.08, 8, 8);
+                const pointMaterials = {
+                    simple: new THREE.MeshBasicMaterial({ color: 0x00ff88 }),
+                    positive: new THREE.MeshBasicMaterial({ color: 0xff6600 }),
+                    negative: new THREE.MeshBasicMaterial({ color: 0x6600ff })
+                };
+                
+                const pointMeshes = [];
+                
+                // Create point meshes
+                e8Points.forEach((point, index) => {
+                    const material = pointMaterials[point.rootType];
+                    const mesh = new THREE.Mesh(pointGeometry, material);
+                    mesh.position.copy(point.position);
+                    mesh.userData = point;
+                    scene.add(mesh);
+                    pointMeshes.push(mesh);
+                });
+                
+                // Create connections between nearby points
+                const linePositions = [];
+                
+                for (let i = 0; i < e8Points.length; i++) {
+                    for (let j = i + 1; j < e8Points.length; j++) {
+                        const dist = e8Points[i].position.distanceTo(e8Points[j].position);
+                        const layerDiff = Math.abs(e8Points[i].layer - e8Points[j].layer);
+                        
+                        // Connect points based on E8 structure rules
+                        if ((dist < 4 && layerDiff <= 1) || 
+                            (e8Points[i].rootType === 'simple' && e8Points[j].rootType === 'simple') ||
+                            (Math.random() < 0.01 && dist < 10)) {
+                            
+                            linePositions.push(
+                                e8Points[i].position.x, e8Points[i].position.y, e8Points[i].position.z,
+                                e8Points[j].position.x, e8Points[j].position.y, e8Points[j].position.z
+                            );
+                        }
+                    }
+                }
+                
+                // Create line geometry
+                const lineGeometry = new THREE.BufferGeometry();
+                lineGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(linePositions), 3));
+                
+                const lineMaterial = new THREE.LineBasicMaterial({ 
+                    color: 0x333333, 
+                    transparent: true, 
+                    opacity: 0.3 
+                });
+                const lines = new THREE.LineSegments(lineGeometry, lineMaterial);
+                scene.add(lines);
+                
+                // Add central structure representing Cartan subalgebra
+                const cartanGeometry = new THREE.OctahedronGeometry(1);
+                const cartanMaterial = new THREE.MeshBasicMaterial({ 
+                    color: 0xff0066, 
+                    wireframe: true,
+                    transparent: true,
+                    opacity: 0.7
+                });
+                const cartanMesh = new THREE.Mesh(cartanGeometry, cartanMaterial);
+                scene.add(cartanMesh);
+                
+                // Position camera
+                camera.position.set(15, 10, 20);
+                camera.lookAt(0, 0, 0);
+                
+                // Controls
+                let animationSpeed = 0.5;
+                let complexity = 4;
+                let projectionFactor = 5;
+                
+                // Wait for DOM to be ready for controls
+                setTimeout(() => {
+                    const speedSlider = document.getElementById('speedSlider');
+                    const complexitySlider = document.getElementById('complexitySlider');
+                    const projectionSlider = document.getElementById('projectionSlider');
+                    
+                    if (speedSlider) {
+                        speedSlider.addEventListener('input', (e) => {
+                            animationSpeed = parseFloat(e.target.value);
+                        });
+                    }
+                    
+                    if (complexitySlider) {
+                        complexitySlider.addEventListener('input', (e) => {
+                            complexity = parseInt(e.target.value);
+                            updateComplexity();
+                        });
+                    }
+                    
+                    if (projectionSlider) {
+                        projectionSlider.addEventListener('input', (e) => {
+                            projectionFactor = parseFloat(e.target.value);
+                        });
+                    }
+                }, 100);
+                
+                function updateComplexity() {
+                    pointMeshes.forEach((mesh, index) => {
+                        mesh.visible = index < complexity * 31;
+                    });
+                }
+                
+                // Animation loop
+                let time = 0;
+                
+                function animate() {
+                    requestAnimationFrame(animate);
+                    time += 0.01 * animationSpeed;
+                    
+                    // Rotate entire structure
+                    scene.rotation.y += 0.005 * animationSpeed;
+                    
+                    // Animate individual points
+                    pointMeshes.forEach((mesh, index) => {
+                        if (!mesh.visible) return;
+                        
+                        const point = mesh.userData;
+                        const basePos = point.position.clone();
+                        
+                        // Apply group transformations
+                        const phase = time + index * 0.1;
+                        const layerPhase = time * (point.layer + 1) * 0.1;
+                        
+                        // Simulate higher-dimensional rotations projected to 3D
+                        const offset = new THREE.Vector3(
+                            Math.sin(phase) * 0.2 * Math.cos(layerPhase),
+                            Math.cos(phase * 1.3) * 0.2 * Math.sin(layerPhase),
+                            Math.sin(phase * 0.7 + layerPhase) * 0.15
+                        );
+                        
+                        // Add projection effects from higher dimensions
+                        const projectionOffset = new THREE.Vector3(
+                            point.extra.w4 * Math.sin(time * 2) * projectionFactor * 0.1,
+                            point.extra.w5 * Math.cos(time * 1.5) * projectionFactor * 0.1,
+                            (point.extra.w4 * point.extra.w5) * Math.sin(time) * projectionFactor * 0.05
+                        );
+                        
+                        mesh.position.copy(basePos).add(offset).add(projectionOffset);
+                        
+                        // Color animation
+                        const material = mesh.material;
+                        const intensity = 0.5 + 0.5 * Math.sin(phase);
+                        material.opacity = 0.7 + 0.3 * intensity;
+                    });
+                    
+                    // Animate Cartan subalgebra
+                    cartanMesh.rotation.x += 0.01 * animationSpeed;
+                    cartanMesh.rotation.y += 0.007 * animationSpeed;
+                    cartanMesh.rotation.z += 0.005 * animationSpeed;
+                    
+                    // Update connection lines opacity
+                    lines.material.opacity = 0.1 + 0.2 * Math.sin(time);
+                    
+                    renderer.render(scene, camera);
+                }
+                
+                // Handle window resize
+                window.addEventListener('resize', () => {
+                    camera.aspect = window.innerWidth / window.innerHeight;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+                
+                // Start animation and hide loading
+                hideLoading();
+                animate();
+                updateComplexity();
+                
+            } catch (error) {
+                console.error('Visualization error:', error);
+                showError('Failed to initialize 3D visualization: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>
